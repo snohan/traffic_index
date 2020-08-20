@@ -2,7 +2,7 @@
 library(writexl)
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
-
+source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
 
 points <- get_points() %>%
   dplyr::distinct(trp_id, .keep_all = T) %>%
@@ -11,17 +11,17 @@ points <- get_points() %>%
   split_road_system_reference() %>%
   dplyr::select(trp_id, name, road_reference, #road_category, road_number,
                 road_category_and_number,
-                #section_number, subsection_number, meter,
+                section_number, #subsection_number, meter,
                 #intersection_part_number, intersection_meter,
-                county_name, municipality_name#,
-                #lat, lon, road_link_position
+                county_name, municipality_name,
+                lat, lon, road_link_position
                 )
 
 points_per_municipality <- points %>%
   dplyr::group_by(municipality_name) %>%
   dplyr::summarise(number_of_points = n())
 
-# En journalist som spurte om disse:
+# En journalist som spurte om disse: ####
 # point_indices <- dplyr::bind_rows(get_pointindices("06390V1204620", "2020"),
 #                                   get_pointindices("39158V121754", "2020"),
 #                                   get_pointindices("20575V121775", "2020"),
@@ -31,7 +31,7 @@ points_per_municipality <- points %>%
 #                                   get_pointindices("10649V121767", "2020")
 #                                   )
 
-# Ferietrafikken til utfartssteder
+# Ferietrafikken til utfartssteder ####
 point_indices <- dplyr::bind_rows(
   get_pointindices("54653V1751052", "2020"),
   get_pointindices("35258V2475662", "2020"),
@@ -99,3 +99,57 @@ writexl::write_xlsx(point_indices_public_friendly,
 
 
 
+# E16 ####
+points_e16 <- points %>%
+  dplyr::filter(road_category_and_number == "Ev16") %>%
+  # keeping only points on "mountain part"
+  dplyr::filter(section_number >= 4) %>%
+  dplyr::filter(section_number <= 44)
+
+points_e16_aadt <- points_e16$trp_id %>%
+  get_aadt_for_trp_list() %>%
+  dplyr::filter(year == 2019) %>%
+  dplyr::filter(coverage > 50)
+
+points_e16_aadt_joined <- points_e16 %>%
+  dplyr::left_join(points_e16_aadt) %>%
+  dplyr::select(-section_number, -year, -coverage,
+                -valid_speed_volume, -valid_length_volume)
+
+# Must supply missing AADTs from NVDB based on road reference
+missing_aadt <- points_e16_aadt_joined %>%
+  dplyr::filter(adt == 0 | is.na(adt)) %>%
+  dplyr::mutate(
+    adt = mapply(getAadtByRoadlinkposition, road_link_position))
+
+with_aadt <- points_e16_aadt_joined %>%
+  dplyr::filter(adt > 0)
+
+points_e16_aadt_final <- bind_rows(with_aadt, missing_aadt) %>%
+  dplyr::select(-road_category_and_number) %>%
+  split_road_system_reference()
+
+# Get point indices
+points_e16_index <- points_e16$trp_id %>%
+  get_pointindices_for_trp_list("2020") %>%
+  dplyr::select(-index_total) %>%
+  dplyr::filter(day_type == "ALL") %>%
+  dplyr::filter(period == "month") %>%
+  dplyr::filter(month %in% c(7)) %>%
+  dplyr::select(trp_id, year, month, index_total_p, index_total_coverage) %>%
+  dplyr::mutate(index_total_p = round(index_total_p, digits = 1))
+
+points_e16_aadt_index <- points_e16_aadt_final %>%
+  dplyr::left_join(points_e16_index) %>%
+  dplyr::filter(index_total_coverage > 50) %>%
+  dplyr::select(name, road_reference, municipality_name, adt, index_total_p)
+
+point_indices_public_friendly <- points_e16_aadt_index %>%
+  dplyr::select(Trafikkregistreringspunkt = name,
+                Vegreferanse = road_reference,
+                Kommune = municipality_name,
+                Årsdøgntrafikk = adt,
+                Endring_i_prosent_juli_2019_juli_2020 = index_total_p)
+
+writexl::write_xlsx(point_indices_public_friendly,
+                    path = "e16_filefjell.xlsx")
