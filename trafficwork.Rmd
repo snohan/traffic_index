@@ -1,0 +1,106 @@
+---
+title: "Trafikkarbeid"
+output: html_notebook
+---
+
+```{r setup, include = FALSE, echo = FALSE}
+# Packages ####
+library(tidyverse)
+library(leaflet)
+library(sf)
+library(knitr)
+library(flextable)
+library(htmltools)
+
+
+source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
+
+# knitr options ####
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE,
+                      error = FALSE,
+                      cache = FALSE)
+
+# Map essentials ####
+nvdb_map_url <-
+  "https://nvdbcache.geodataonline.no/arcgis/rest/services/Trafikkportalen/GeocacheTrafikkJPG/MapServer/tile/{z}/{y}/{x}"
+
+nvdb_map_attribution <-
+  "NVDB, Geovekst, kommunene og Open Street Map contributors (utenfor Norge)"
+
+nvdb_crs <- leafletCRS(
+  crsClass = "L.Proj.CRS", code = "EPSG:25833",
+  proj4def = "+proj=utm +zone=33 +ellps=GRS80 +units=m +no_defs",
+  resolutions = c(
+    21674.7100160867,
+    10837.35500804335,
+    5418.677504021675,
+    2709.3387520108377,
+    1354.6693760054188,
+    677.3346880027094,
+    338.6673440013547,
+    169.33367200067735,
+    84.66683600033868,
+    42.33341800016934,
+    21.16670900008467,
+    10.583354500042335,
+    5.291677250021167,
+    2.6458386250105836,
+    1.3229193125052918,
+    0.6614596562526459,
+    0.33072982812632296,
+    0.16536491406316148
+  ),
+  origin = c(-2500000.0, 9045984.0))
+```
+
+```{r get_data, message=FALSE, include=FALSE}
+
+# Riksvegruter
+
+trafikkmengde_r6b <- get_trafikkmengde_for_riksvegrute("RUTE6B", "2014-2023 / 2018-2029")
+```
+
+```{r intersections}
+```
+
+
+
+```{r manipulate_links}
+```
+
+# Riksveg 3
+Rute 6B, periode 2014-2023 / 2018-2029
+
+
+```{r plot}
+color_palette <- colorNumeric(
+  palette = c("#a1d99b", "#31a354"),
+  domain = trafikkmengde_r6b$aadt)
+
+leaflet(width = "100%",
+          height = 700,
+          options = leafletOptions(crs = nvdb_crs,
+                                   zoomControl = F)) %>%
+  addTiles(urlTemplate = nvdb_map_url,
+           attribution = nvdb_map_attribution) %>%
+  addPolylines(data = trafikkmengde_r6b,
+               opacity = 1,
+               color = ~color_palette(aadt),
+               popup = ~htmlEscape(aadt),
+               highlightOptions = highlightOptions(bringToFront = TRUE,
+                                                   sendToBack = TRUE,
+                                                   color = "red",
+                                                   opacity = 0.7))
+```
+
+
+
+```{r histogram}
+trafikkarbeid <- trafikkmengde_r6b %>% 
+  sf::st_drop_geometry() %>% 
+  dplyr::mutate(trafikkarbeid = aadt * lengde * 365) %>% 
+  dplyr::summarise(trafikkarbeid_rute = round(sum(trafikkarbeid) / 1e9, digits = 0))
+```
+
