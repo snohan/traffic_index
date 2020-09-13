@@ -12,7 +12,6 @@ library(knitr)
 library(flextable)
 library(htmltools)
 
-
 source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
 
 # knitr options ####
@@ -53,31 +52,12 @@ nvdb_crs <- leafletCRS(
     0.16536491406316148
   ),
   origin = c(-2500000.0, 9045984.0))
-```
 
-```{r get_data, message=FALSE, include=FALSE}
+draw_route_map <- function(route_data) {
 
-# Riksvegruter
-
-trafikkmengde_r6b <- get_trafikkmengde_for_riksvegrute("RUTE6B", "2014-2023 / 2018-2029")
-```
-
-```{r intersections}
-```
-
-
-
-```{r manipulate_links}
-```
-
-# Riksveg 3
-Rute 6B, periode 2014-2023 / 2018-2029
-
-
-```{r plot}
-color_palette <- colorNumeric(
+  color_palette <- colorNumeric(
   palette = c("#a1d99b", "#31a354"),
-  domain = trafikkmengde_r6b$aadt)
+  domain = route_data$aadt)
 
 leaflet(width = "100%",
           height = 700,
@@ -85,22 +65,197 @@ leaflet(width = "100%",
                                    zoomControl = F)) %>%
   addTiles(urlTemplate = nvdb_map_url,
            attribution = nvdb_map_attribution) %>%
-  addPolylines(data = trafikkmengde_r6b,
+  addPolylines(data = route_data,
                opacity = 1,
                color = ~color_palette(aadt),
                popup = ~htmlEscape(aadt),
                highlightOptions = highlightOptions(bringToFront = TRUE,
                                                    sendToBack = TRUE,
                                                    color = "red",
-                                                   opacity = 0.7))
+                                                   opacity = 0.7))  
+}
+
+calculate_route_traffic_work <- function(route_data) {
+
+  trafikkarbeid <- route_data %>% 
+    sf::st_drop_geometry() %>% 
+    dplyr::mutate(trafikkarbeid = aadt * lengde * 365) %>% 
+    dplyr::summarise(trafikkarbeid_rute = round(sum(trafikkarbeid) / 1e9, digits = 0))
+}
+```
+
+```{r get_data, message=FALSE, include=FALSE}
+
+gjeldende_periode <- "2014-2023 / 2018-2029"
+
+# Riksvegruter
+trafikkmengde_r1  <- get_trafikkmengde_for_riksvegrute("RUTE1", gjeldende_periode) %>% 
+  dplyr::mutate(rutenr = "1")
+trafikkmengde_r2a  <- get_trafikkmengde_for_riksvegrute("RUTE2A", gjeldende_periode)
+trafikkmengde_r2b  <- get_trafikkmengde_for_riksvegrute("RUTE2B", gjeldende_periode)
+trafikkmengde_r3  <- get_trafikkmengde_for_riksvegrute("RUTE3", gjeldende_periode)
+trafikkmengde_r4a <- get_trafikkmengde_for_riksvegrute("RUTE4A", gjeldende_periode)
+trafikkmengde_r4b <- get_trafikkmengde_for_riksvegrute("RUTE4B", gjeldende_periode)
+trafikkmengde_r4c <- get_trafikkmengde_for_riksvegrute("RUTE4C", gjeldende_periode)
+trafikkmengde_r5a <- get_trafikkmengde_for_riksvegrute("RUTE5A", gjeldende_periode)
+trafikkmengde_r5b <- get_trafikkmengde_for_riksvegrute("RUTE5B", gjeldende_periode)
+trafikkmengde_r5c <- get_trafikkmengde_for_riksvegrute("RUTE5C", gjeldende_periode)
+trafikkmengde_r6a <- get_trafikkmengde_for_riksvegrute("RUTE6A", gjeldende_periode)
+trafikkmengde_r6b <- get_trafikkmengde_for_riksvegrute("RUTE6B", gjeldende_periode)
+trafikkmengde_r6c <- get_trafikkmengde_for_riksvegrute("RUTE6C", gjeldende_periode)
+trafikkmengde_r6d <- get_trafikkmengde_for_riksvegrute("RUTE6D", gjeldende_periode)
+trafikkmengde_r6e <- get_trafikkmengde_for_riksvegrute("RUTE6E", gjeldende_periode)
+trafikkmengde_r7 <- get_trafikkmengde_for_riksvegrute("RUTE7", gjeldende_periode)
+trafikkmengde_r8a <- get_trafikkmengde_for_riksvegrute("RUTE8A", gjeldende_periode)
+trafikkmengde_r8b <- get_trafikkmengde_for_riksvegrute("RUTE8B", gjeldende_periode)
+```
+
+# Rute 1: Ev6 Svinesund - Oslo
+
+```{r 1_map}
+draw_route_map(trafikkmengde_r1)
+```
+
+# Rute 2a: Ev18 Ørje - Oslo
+
+```{r 2a_map}
+draw_route_map(trafikkmengde_r2a)
+```
+
+# Rute 2b: Ev16 Riksgrensen - Hønefoss og Rv35 Hønefoss - Hokksund
+Tilknytniger er Rv25 Elverum - Riksgrensen ved Støa og Rv2 Elverum - Magnor
+
+```{r 2b_map}
+draw_route_map(trafikkmengde_r2b)
+```
+
+# Rute 3: Ev18 og Ev39 Oslo - Kristiansand - Stavanger
+
+```{r 3_map}
+draw_route_map(trafikkmengde_r3)
+```
+
+# Rute 4a: Ev39 Stavanger - Ålesund
+
+```{r 4a_map}
+draw_route_map(trafikkmengde_r4a)
+```
+
+# Rute 4b: Ev39 Ålesund - Trondheim
+
+```{r 4b_map}
+draw_route_map(trafikkmengde_r4b)
+```
+
+# Rute 4c: Rv 9 Kristiansand - Haukeligrend og Rv 13/55 Jøsendal - Sogndal
+
+```{r 4c_map}
+draw_route_map(trafikkmengde_r4c)
+```
+
+# Rute 5a: E134 Drammen - Haugesund
+
+```{r 5a_map}
+draw_route_map(trafikkmengde_r5a)
+```
+
+# Rute 5b: Rv 7 Hønefoss - Bu og Rv52 Gol - Borlaug
+
+```{r 5b_map}
+draw_route_map(trafikkmengde_r5b)
+```
+
+# Rute 5c: E16 Sandvika Bergen
+
+```{r 5c_map}
+draw_route_map(trafikkmengde_r5c)
+```
+
+
+# Rute 6a: E6 Oslo - Trondheim
+
+```{r 6a_map}
+draw_route_map(trafikkmengde_r6a)
 ```
 
 
 
-```{r histogram}
-trafikkarbeid <- trafikkmengde_r6b %>% 
-  sf::st_drop_geometry() %>% 
-  dplyr::mutate(trafikkarbeid = aadt * lengde * 365) %>% 
-  dplyr::summarise(trafikkarbeid_rute = round(sum(trafikkarbeid) / 1e9, digits = 0))
+# Rute 6b: Rv3 Kolomoen - Ulsberg
+
+```{r 6b_map}
+draw_route_map(trafikkmengde_r6b)
 ```
+
+# Rute 6c: Rv15 Otta - Måløy
+
+```{r 6c_map}
+draw_route_map(trafikkmengde_r6c)
+```
+
+
+# Rute 6d: E136 Dombås - Ålesund
+
+```{r 6d_map}
+draw_route_map(trafikkmengde_r6d)
+```
+
+# Rute 6e: Rv70 Oppdal - Kristiansund
+
+```{r 6e_map}
+draw_route_map(trafikkmengde_r6e)
+```
+
+
+# Rute 7: E6 Trondheim - Fauske
+
+```{r 7_map}
+draw_route_map(trafikkmengde_r7)
+```
+
+
+# Rute 8a: E6 Fauske - Nordkjosbotn
+
+```{r 8a_map}
+draw_route_map(trafikkmengde_r8a)
+```
+
+
+# Rute 8b: E6 Nordkjosbotn - Kirkenes
+
+```{r 8b_map}
+draw_route_map(trafikkmengde_r8b)
+```
+
+
+```{r traffic_work}
+traffic_work_1 <- calculate_route_traffic_work(trafikkmengde_r1)
+traffic_work_2a <- calculate_route_traffic_work(trafikkmengde_r2a)
+traffic_work_2b <- calculate_route_traffic_work(trafikkmengde_r2b)
+traffic_work_3 <- calculate_route_traffic_work(trafikkmengde_r3)
+traffic_work_4a <- calculate_route_traffic_work(trafikkmengde_r4a)
+traffic_work_4b <- calculate_route_traffic_work(trafikkmengde_r4b)
+traffic_work_4c <- calculate_route_traffic_work(trafikkmengde_r4c)
+traffic_work_5a <- calculate_route_traffic_work(trafikkmengde_r5a)
+traffic_work_5b <- calculate_route_traffic_work(trafikkmengde_r5b)
+traffic_work_5c <- calculate_route_traffic_work(trafikkmengde_r5c)
+traffic_work_6a <- calculate_route_traffic_work(trafikkmengde_r6a)
+traffic_work_6b <- calculate_route_traffic_work(trafikkmengde_r6b)
+traffic_work_6c <- calculate_route_traffic_work(trafikkmengde_r6c)
+traffic_work_6d <- calculate_route_traffic_work(trafikkmengde_r6d)
+traffic_work_6e <- calculate_route_traffic_work(trafikkmengde_r6e)
+traffic_work_7 <- calculate_route_traffic_work(trafikkmengde_r7)
+traffic_work_8a <- calculate_route_traffic_work(trafikkmengde_r8a)
+traffic_work_8b <- calculate_route_traffic_work(trafikkmengde_r8b)
+
+traffic_work_all_routes <- tibble::tibble(
+  rute = c("7", "8a", "8b"),
+  trafikkarbeid = c(traffic_work_7,
+                    traffic_work_8a,
+                    traffic_work_8b)
+)
+
+```
+
+
+
 
