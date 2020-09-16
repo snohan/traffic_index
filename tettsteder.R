@@ -16,8 +16,8 @@ urban_areas <- sf::st_read("Tettsted2020/SSB_tettsted_flate_2020.shp") %>%
   dplyr::filter(population >= 5000) %>%
   sf::st_transform("+proj=longlat +datum=WGS84")
 
-urban_areas_selection <- urban_areas %>%
-  dplyr::filter(urban_area_number %in% c(5001))
+#urban_areas_selection <- urban_areas %>%
+#  dplyr::filter(urban_area_number %in% c(5001))
 
 trp <- get_points() %>%
   dplyr::distinct(trp_id, .keep_all = T) %>%
@@ -43,3 +43,25 @@ trp_urban <- trp_urban_area %>%
 
 trp_non_urban <- trp_urban_area %>%
   dplyr::filter(is.na(urban_area_name))
+
+
+# Looking at what we've used by July 2020 in the total Vegtrafikkindeks
+vti_trp <- read.csv2("punktindeks-2020-07.csv") %>%
+  dplyr::select(trpid,
+                day_type = 6,
+                lengdeklasse,
+                periode,
+                dekning) %>%
+  dplyr::filter(day_type == "Alle",
+                lengdeklasse == "Alle",
+                periode == "Hittil i år",
+                dekning > 50)
+
+# Choosing only the good ones used already
+trp_urban_good <- trp_urban %>%
+  sf::st_drop_geometry() %>%
+  dplyr::filter(trp_id %in% vti_trp$trpid)
+
+trp_non_urban_good <- trp_non_urban %>%
+  sf::st_drop_geometry() %>%
+  dplyr::filter(trp_id %in% vti_trp$trpid)
